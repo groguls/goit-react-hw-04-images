@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useEffect, useState } from 'react';
 import { Gallery, GlobalStyle, PageWrapper } from './GlobalStyle';
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
@@ -7,32 +7,29 @@ import { fetchImages } from './pixabayService';
 import toast, { Toaster } from 'react-hot-toast';
 import { Loader } from './Loader/Loader';
 
-export class App extends Component {
-  state = {
-    images: [],
-    query: '',
-    page: null,
-    loading: false,
-    isMore: false,
-    randomId: '',
-  };
+export const App = () => {
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [randomId, setRandomId] = useState('');
 
-  componentDidUpdate = async (prevProps, prevState) => {
-    const { query, page, randomId } = this.state;
+  //HTTP request
+  useEffect(() => {
+    if (!query) {
+      return;
+    }
+    getImages();
 
-    if (
-      prevState.query !== query ||
-      prevState.page !== page ||
-      prevState.randomId !== randomId
-    ) {
+    async function getImages() {
+      setLoading(true);
+      setIsLoadingMore(false);
       try {
-        this.setState({ loading: true, error: false, isMore: false });
-        const images = await fetchImages(query, page);
-        const totalImgs = images.totalHits;
-        const totalPages = totalImgs / 12;
-        const isMore = page < Math.ceil(totalPages);
+        const { totalHits, hits } = await fetchImages(query, page);
+        const isMore = page < Math.ceil(totalHits / 12);
 
-        if (totalImgs <= 0) {
+        if (totalHits <= 0) {
           toast(
             'Sorry, there are no images matching your search query. Please try again.',
             {
@@ -42,10 +39,8 @@ export class App extends Component {
           return;
         }
 
-        this.setState(prevState => ({
-          images: [...prevState.images, ...images.hits],
-          isMore,
-        }));
+        setImages(prevImages => [...prevImages, ...hits]);
+        setIsLoadingMore(isMore);
 
         if (!isMore) {
           toast("We're sorry, but you've reached the end of search results.", {
@@ -53,53 +48,51 @@ export class App extends Component {
           });
         }
       } catch (error) {
-        this.onError();
+        onError();
       } finally {
-        this.setState({ loading: false });
+        setLoading(false);
       }
     }
+  }, [page, query, randomId]);
 
-    if (page > 1) {
-      this.smoothScrolling();
+  //autoscroll
+  useEffect(() => {
+    if (images.length > 12) {
+      smoothScrolling();
     }
+  }, [images]);
+
+  const onSearch = query => {
+    setQuery(query);
+    setPage(1);
+    setImages([]);
+    setRandomId(Date.now());
   };
 
-  onSearch = query => {
-    this.setState({ query, page: 1, images: [], randomId: Date.now() });
+  const onLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  onLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
-  };
-
-  onError = () =>
+  const onError = () =>
     toast.error('Oops! Something went wrong! Try reloading the page!');
 
-  smoothScrolling = () => {
-    const { height: cardHeight } = document
-      .querySelector('li')
-      .firstElementChild.getBoundingClientRect();
-
+  const smoothScrolling = () => {
     window.scrollBy({
-      top: cardHeight * 2,
+      top: 520,
       behavior: 'smooth',
     });
   };
 
-  render() {
-    const { loading, images, isMore } = this.state;
-    return (
-      <PageWrapper>
-        <Gallery>
-          <GlobalStyle />
-          <Toaster position="top-right" />
-          <Searchbar onSubmit={this.onSearch} />
-
-          {images.length > 0 && <ImageGallery images={images} />}
-        </Gallery>
-        {loading && <Loader />}
-        {isMore && <Button onLoadMore={this.onLoadMore} />}
-      </PageWrapper>
-    );
-  }
-}
+  return (
+    <PageWrapper>
+      <Gallery>
+        <GlobalStyle />
+        <Toaster position="top-right" />
+        <Searchbar onSubmit={onSearch} />
+        {images.length > 0 && <ImageGallery images={images} />}
+      </Gallery>
+      {loading && <Loader />}
+      {isLoadingMore && <Button onLoadMore={onLoadMore} />}
+    </PageWrapper>
+  );
+};
