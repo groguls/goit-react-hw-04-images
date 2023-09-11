@@ -5,10 +5,8 @@ import { useState } from 'react';
 export const ImageGalleryItem = ({ image }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const modalToggle = evt => {
-    if (evt.target === evt.currentTarget || evt.code === 'Escape') {
-      setIsModalOpen(!isModalOpen);
-    }
+  const modalToggle = () => {
+    setIsModalOpen(!isModalOpen);
   };
 
   const { webformatURL, tags, largeImageURL } = image;

@@ -3,14 +3,25 @@ import { Overlay, StyledModal } from './Modal.styled';
 
 export const Modal = ({ onClose, children }) => {
   useEffect(() => {
-    window.addEventListener('keydown', onClose);
+    const handleEscKeyDown = evt => {
+      if (evt.code === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscKeyDown);
     return () => {
-      window.removeEventListener('keydown', onClose);
+      window.removeEventListener('keydown', handleEscKeyDown);
     };
   }, [onClose]);
 
+  const handleBackdropClick = evt => {
+    if (evt.target === evt.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <Overlay onClick={onClose}>
+    <Overlay onClick={handleBackdropClick}>
       <StyledModal>{children}</StyledModal>
     </Overlay>
   );
